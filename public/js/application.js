@@ -1,7 +1,21 @@
 $(document).ready(function() {
-  // This is called after the document has loaded in its entirety
-  // This guarantees that any elements we bind to will exist on the page
-  // when we try to bind to them
-
-  // See: http://docs.jquery.com/Tutorials:Introducing_$(document).ready()
+  $("#get_zip").change(function(){
+    var user_input = $("#get_zip").val()
+    $.ajax({
+      url: 'https://api.meetup.com/2/groups?key=4e2b46647072193c161c4a13d397662&sign=true&photo-host=public&zip=' + user_input + '&radius=1&category_id=9',
+      type: 'GET',
+      dataType: 'jsonp',
+      success: function (data, textStatus, xhr) {
+        $("h3").text("Local Health and Wellness Meetups");
+        for (var i = 0; i < data["results"].length; i++){
+          // console.log(data["results"][i]["name"]);
+          $("ul").append('<li>' + '<a href="' + data["results"][i]["link"] + '">' + data["results"][i]["name"] + '</a>' + '</li>');
+        };
+      },
+      error: function (xhr, textStatus, errorThrown) {
+        console.log('Error in Operation');
+      }
+    });
+  })
 });
+
