@@ -1,3 +1,9 @@
+var countyBoundaries;
+var map;
+var incidence;
+var incidenceByCounty = {};
+var colorScale;
+
 $(document).ready(function() {
   $("#get_zip").change(function(){
     var user_input = $("#get_zip").val()

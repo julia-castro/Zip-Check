@@ -3,7 +3,7 @@ get '/zipcheck' do
   erb :index
 end
 
-# post '/zipcheck_result' do
-#   p params
-#   erb :result
-# end
+get '/map' do
+  erb :map
+end
+
