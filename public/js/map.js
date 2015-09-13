@@ -1,4 +1,4 @@
-var countyBoundaries;
+﻿var countyBoundaries;
 var map;
 var incidence;
 var incidenceByCounty = {};
