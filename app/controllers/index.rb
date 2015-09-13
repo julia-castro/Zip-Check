@@ -4,11 +4,19 @@ get '/' do
 end
 
 get '/users' do
-  erb:
+  users = User.all()
+
+  return users.to_json
+
   # show all users, redirect to map with users on it
 end
 
-post '/users' do
-  User.create(params["user"])
-  #show all users, redirect to map with users on it
+get '/users/add' do
+  name = params["user"]
+  email = params["email"]
+  text = params["text"]
+
+  user = User.create(first_name: name, prevention_method: text, email: email)
+
+  return "ok"
 end

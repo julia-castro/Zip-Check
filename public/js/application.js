@@ -70,6 +70,20 @@ $(document).ready(function() {
     drawScale('mortality');
   });
 
+  $(document).on('click', '.add-yourself', function() {
+    name = $(".first-name").val();
+    email = $(".email").val();
+    text = $(".email").val();
+    $.post('/users', {
+      user: name,
+      email: email,
+      text: text
+    }, function() {
+      console.log("here");
+      alert("Thanks! You've been added to the map!");
+    });
+  });
+
 
   loadIncidenceData();
   loadMortalityData();
@@ -166,6 +180,18 @@ function renderInfo(county) {
   else {
     html += "<div>No data. Not all states have cancer registries. Data is suppressed in some counties that have low mortality to protect the privacy of those in the registry.</div>"
   }
+
+  html += "<h3>Resources</h3>";
+  html += "<p>There are lots of things you can do to lower your exposure to toxic chemicals by making smart choices about the productsy you buy and the food you eat. Check out <a href='http://www.silentspring.org/tooclosetohome/'>Too Close to Home</a> for tips about things you can do in your life and ways your community can work to improve our environment.</p>";
+
+
+  html += "<h3>Add yourself to the map</h3>";
+  html += "<p>Tell others what you do to reduce your risk of breast cancer. Connect with others in your local community.</p>";
+  html += "<input type='text' placeholder='First name' class='first-name' />";
+  html += "<input type='text' placeholder='Email' class='email' />";
+  html += "<textarea>What do you do to reduce your risk of breast cancer?</textarea>";
+
+  html += "<button type='submit' class='add-yourself'>Add Yourself</button>";
 
   $("#info").html(html);
 

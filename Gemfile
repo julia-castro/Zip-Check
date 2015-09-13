@@ -5,7 +5,7 @@ ruby '2.2.1'
 gem 'pg'
 
 # Sinatra driver
-gem 'sinatra'
+gem 'sinatra', git: 'git@github.com:sinatra/sinatra.git'
 gem 'sinatra-contrib'
 
 gem 'activesupport', '~>4.2.0'
