@@ -1,9 +1,4 @@
-get '/zipcheck' do
+get '/' do
   @zip = params["zip_code"]
   erb :index
 end
-
-get '/map' do
-  erb :map
-end
-
