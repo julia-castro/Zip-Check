@@ -8,8 +8,15 @@ $(document).ready(function() {
   $("#submit").click(function(){
     var user_input = $("#get_zip").val()
 
-    geocode(user_input);
+    geocode(user_input, function(loc) {
+      $("#prompt").fadeOut(function() {
+        map.setView(L.latLng(loc.G, loc.K), 7, {
+          animate: true
+        });
+      });
+    });
   });
+
 
 
   map = L.map('map').setView([39.8282, -98.5795], 4);
@@ -21,17 +28,30 @@ $(document).ready(function() {
       accessToken: 'pk.eyJ1IjoiaGVyYnBzMTAiLCJhIjoiV1dHRDZmWSJ9.hEa8olJ_k35VTNfVNmDD4A'
   }).addTo(map);
 
-  
 
   loadIncidenceData();
-  loadCountyBoundaries();
-  
 });
 
-function geocode(input) {
-  $.getJSON("http://maps.googleapis.com/maps/api/geocode/output?key=AIzaSyBUHsnMfC2Y4g-Gfw0k8WWhq-4cTljdfvU&address=" + input, function(data) {
-    console.log(data); 
-  });
+function getCounty(coordinates) {
+  //gju.pointInPolygon({ type: 'Point', coordinates: 
+  
+}
+
+function geocode(input, callback) {
+  var geocoder = new google.maps.Geocoder();
+
+  if(geocoder) {
+    geocoder.geocode({ 'address': input }, function(results, status) {
+      if (status == google.maps.GeocoderStatus.OK) {
+        console.log(results);
+        callback(results[0].geometry.location);
+      }
+      else {
+        console.log("Geocoding failed: " + status);
+      }
+
+    });
+  }
 }
 
 function loadIncidenceData() {
@@ -79,7 +99,8 @@ function style(feature) {
   else {
     return {
       stroke: false,
-      fillColor: colorScale(incidence)
+      fillColor: colorScale(incidence),
+      fillOpacity: 0.5
     };
   }
 }
@@ -87,8 +108,10 @@ function style(feature) {
 function loadCountyBoundaries() {
   $.ajax({
     dataType: "json",
-    url: "data/counties.geojson",
+    url: "/data/counties.geojson",
     success: function(data) {
+      console.log('here');
+      mapData = data;
       $(data.features).each(function(key, data) {
         countyBoundaries = new L.geoJson(data, {
           style: style 
@@ -97,7 +120,9 @@ function loadCountyBoundaries() {
         countyBoundaries.addTo(map);
       });
     }
-  }).error(function() {});
+  }).error(function(status, response) {
+    console.log('here', status, response);
+  });
 }
 
 function meetup(user_input) {
