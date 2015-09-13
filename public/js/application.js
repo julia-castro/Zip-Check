@@ -1,4 +1,4 @@
-var countyBoundaries;
+var countyBoundaries = {};
 var map;
 var incidence;
 var incidenceByCounty = {};
@@ -16,6 +16,12 @@ $(document).ready(function() {
 
         getCounty([loc.G, loc.K], function(county) {
           renderInfo(county);
+
+          countyBoundaries[county.FIPS].setStyle({
+            stroke: true,
+            color: 'blue',
+            weight: 3
+          });
         });
       });
     });
@@ -35,12 +41,15 @@ $(document).ready(function() {
 });
 
 function renderInfo(county) {
-  incidence = incidenceByCounty[county.FIPS];
+  val = incidenceByCounty[county.FIPS];
 
   html = "<h1>" + county.name + " County</h1>";
-  html += "Breast cancer incidence: " + incidence + " / 100,000";
+  html += "Breast cancer incidence: " + val + " / 100,000";
+  html += "<div id='chart'></div>";
 
   $("#info").html(html);
+  
+  renderIncidenceDensity($("#chart")[0], incidence, county.name, val);
 }
 
 function getCounty(coordinates, callback) {
@@ -59,9 +68,7 @@ function geocode(input, callback) {
 
   if(geocoder) {
     geocoder.geocode({ 'address': input }, function(results, status) {
-      console.log(results);
       if (status == google.maps.GeocoderStatus.OK) {
-        console.log(results);
         callback(results[0].geometry.location);
       }
       else {
@@ -92,23 +99,22 @@ function loadIncidenceData() {
         incidenceByCounty[row.fips] = row.incidence;
       });
 
-      renderIncidenceDensity($("#chart")[0], incidence, 200);
 
-      //loadCountyBoundaries();
+      loadCountyBoundaries();
     });
 }
 
 function style(feature) {
   key = "" + feature.properties.STATE + feature.properties.COUNTY;
 
-  incidence = incidenceByCounty[key];
+  val = incidenceByCounty[key];
   //if(incidence == undefined) {
     //console.log(feature.properties.NAME + " " + feature.properties.STATE);
   //}
   //
   //
 
-  if(isNaN(incidence) || incidence == undefined) {
+  if(isNaN(val) || val == undefined) {
     return {
       stroke: false,
       fillColor: 'gray'
@@ -117,7 +123,7 @@ function style(feature) {
   else {
     return {
       stroke: false,
-      fillColor: colorScale(incidence),
+      fillColor: colorScale(val),
       fillOpacity: 0.5
     };
   }
@@ -130,50 +136,56 @@ function loadCountyBoundaries() {
     success: function(data) {
       mapData = data;
       $(data.features).each(function(key, data) {
-        countyBoundaries = new L.geoJson(data, {
+        fips = data.properties.STATE + data.properties.COUNTY;
+
+        countyBoundaries[fips] = new L.geoJson(data, {
           style: style 
         });
 
-        countyBoundaries.addTo(map);
+        countyBoundaries[fips].on('mouseover', function() {
+          renderInfo({ FIPS: data.properties.STATE + data.properties.COUNTY, name: data.properties.NAME });
+        });
+
+        countyBoundaries[fips].addTo(map);
       });
     }
   }).error(function(status, response) {
-    console.log('here', status, response);
+    console.log(status, response);
   });
 }
 
 function meetup(user_input) {
-      $.ajax({
-        url: 'https://api.meetup.com/2/groups?key=4e2b46647072193c161c4a13d397662&sign=true&photo-host=public&zip=' + user_input + '&radius=1&category_id=9',
-        type: 'GET',
-        dataType: 'jsonp',
-        success: function (data, textStatus, xhr) {
-          $("#meetups").text("Local Health and Wellness Meetups");
-          for (var i = 0; i < data["results"].length; i++){
-            $("#meetups_list").append('<li>' + '<a href="' + data["results"][i]["link"] + '">' + data["results"][i]["name"] + '</a>' + '</li>');
-          };
-        },
-        error: function (xhr, textStatus, errorThrown) {
-          console.log('Error in Operation');
-        }
-      });
-      $.ajax({
-        url: 'https://api.meetup.com/2/groups?key=4e2b46647072193c161c4a13d397662&sign=true&photo-host=public&zip=' + user_input + '&radius=1&category_id=14',
-        type: 'GET',
-        dataType: 'jsonp',
-        success: function (data, textStatus, xhr) {
-          for (var i = 0; i < data["results"].length; i++){
-            $("#meetups_list").append('<li>' + '<a href="' + data["results"][i]["link"] + '">' + data["results"][i]["name"] + '</a>' + '</li>');
-          };
-        },
-        error: function (xhr, textStatus, errorThrown) {
-          console.log('Error in Operation');
-        }
-      });
+  $.ajax({
+    url: 'https://api.meetup.com/2/groups?key=4e2b46647072193c161c4a13d397662&sign=true&photo-host=public&zip=' + user_input + '&radius=1&category_id=9',
+    type: 'GET',
+    dataType: 'jsonp',
+    success: function (data, textStatus, xhr) {
+      $("#meetups").text("Local Health and Wellness Meetups");
+      for (var i = 0; i < data["results"].length; i++){
+        $("#meetups_list").append('<li>' + '<a href="' + data["results"][i]["link"] + '">' + data["results"][i]["name"] + '</a>' + '</li>');
+      };
+    },
+    error: function (xhr, textStatus, errorThrown) {
+      console.log('Error in Operation');
     }
+  });
+  $.ajax({
+    url: 'https://api.meetup.com/2/groups?key=4e2b46647072193c161c4a13d397662&sign=true&photo-host=public&zip=' + user_input + '&radius=1&category_id=14',
+    type: 'GET',
+    dataType: 'jsonp',
+    success: function (data, textStatus, xhr) {
+      for (var i = 0; i < data["results"].length; i++){
+        $("#meetups_list").append('<li>' + '<a href="' + data["results"][i]["link"] + '">' + data["results"][i]["name"] + '</a>' + '</li>');
+      };
+    },
+    error: function (xhr, textStatus, errorThrown) {
+      console.log('Error in Operation');
+    }
+  });
+}
 
 
-function renderIncidenceDensity(container, incidence, callout) {
+function renderIncidenceDensity(container, incidence, county, callout) {
   dat = incidence.map(function(row) {
     return row.incidence;
   });
@@ -181,7 +193,7 @@ function renderIncidenceDensity(container, incidence, callout) {
   var xMax = d3.max(dat);
   var xMin = d3.min(dat);
 
-  var margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  var margin = { top: 30, right: 20, bottom: 40, left: 60 };
   var width = 400 - margin.right - margin.left;
   var height = 200 - margin.top - margin.bottom;
 
@@ -236,14 +248,26 @@ function renderIncidenceDensity(container, incidence, callout) {
     .attr('x', width / 2)
     .attr('y', height + 30)
     .attr('text-anchor', 'middle')
-    .text('Breast cancer incidence (cases per 100,000)');
+    .text('County breast cancer incidence (cases per 100,000)');
+
+  svg.append('g')
+    .attr('transform', 'translate(' + x(callout) + ', -5)')
+    .append('path')
+    .attr('d', d3.svg.symbol().type('triangle-down').size(15))
+    .attr('class', 'county-triangle');
 
   svg.append('line')
     .attr('class', 'county-line')
     .attr('x1', x(callout))
     .attr('y1', 0)
     .attr('x2', x(callout))
-    .attr('y2', 100);
+    .attr('y2', height);
+
+  svg.append('text')
+    .attr('x', x(callout))
+    .attr('y', -12)
+    .attr('text-anchor', 'middle')
+    .text(county + ' County');
 
 
   svg.append("path")
