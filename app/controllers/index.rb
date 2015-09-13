@@ -15,8 +15,10 @@ get '/users/add' do
   name = params["user"]
   email = params["email"]
   text = params["text"]
+  latitude = params['latitude']
+  longitude = params['longitude']
 
-  user = User.create(first_name: name, prevention_method: text, email: email)
+  user = User.create(first_name: name, prevention_method: text, email: email, latitude: latitude, longitude: longitude)
 
   return "ok"
 end

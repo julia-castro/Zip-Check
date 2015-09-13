@@ -1,6 +1,8 @@
 body {
   width: 100%;
   height: 100%;
+  font-family: 'Open Sans';
+  line-height: 125%;
 }
 
 #map {
@@ -40,13 +42,14 @@ body {
 }
 
 #info {
+  display: none;
   background: rgba(255, 255, 255, 0.8);
   position: absolute;
   width: 450px;
   right: 0px;
   top: 0px;
   bottom: 0px;
-  padding: 25px;
+  padding: 25px 25px 50px 25px;
   overflow: scroll;
 }
 
@@ -108,4 +111,10 @@ svg .label {
   width: 100%;
   height: 75px;
   margin-bottom: 5px;
+}
+
+#logo {
+  position: absolute;
+  left: 0px;
+  top: 200px;
 }

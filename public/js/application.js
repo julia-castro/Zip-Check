@@ -6,12 +6,15 @@ var mortality;
 var mortalityByCounty = {};
 var colorScale;
 var mortalityColorScale;
+var coords;
+var markers = [];
 
 $(document).ready(function() {
   $(document).on('click', '.submit', function(){
     var user_input = $(".get_zip").val()
 
     $("#controller").show();
+    $("#info").show();
 
     geocode(user_input, function(loc) {
       if($("#prompt").length > 0) {
@@ -22,6 +25,8 @@ $(document).ready(function() {
       map.setView(L.latLng(loc.G, loc.K), 7, {
         animate: true
       });
+
+      coords = [loc.G, loc.K];
 
       getCounty([loc.G, loc.K], function(county) {
         renderInfo(county);
@@ -73,20 +78,23 @@ $(document).ready(function() {
   $(document).on('click', '.add-yourself', function() {
     name = $(".first-name").val();
     email = $(".email").val();
-    text = $(".email").val();
-    $.post('/users', {
+    text = $(".text").val();
+    $.get('/users/add', {
       user: name,
       email: email,
-      text: text
+      text: text,
+      latitude: coords[0],
+      longitude: coords[1]
     }, function() {
       console.log("here");
-      alert("Thanks! You've been added to the map!");
+      loadUsers();
     });
   });
 
 
   loadIncidenceData();
   loadMortalityData();
+  loadUsers();
 });
 
 function drawScale(type) {
@@ -189,11 +197,13 @@ function renderInfo(county) {
   html += "<p>Tell others what you do to reduce your risk of breast cancer. Connect with others in your local community.</p>";
   html += "<input type='text' placeholder='First name' class='first-name' />";
   html += "<input type='text' placeholder='Email' class='email' />";
-  html += "<textarea>What do you do to reduce your risk of breast cancer?</textarea>";
+  html += "<textarea class='text'>What do you do to reduce your risk of breast cancer?</textarea>";
 
   html += "<button type='submit' class='add-yourself'>Add Yourself</button>";
 
   $("#info").html(html);
+
+  $("#info").scrollTop(0);
 
   var incidenceDat = incidence.map(function(d) {
     return d.incidence;
@@ -487,4 +497,25 @@ function gaussianKernel(scale) {
   return function(u) {
     return (1.0 / (Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow(u / scale, 2))
   }
+}
+
+function loadUsers() {
+  $.getJSON("/users", function(data) {
+    for(key in marker) {
+      map.removeLayer(marker[key]);
+    }
+
+    for(key in data) {
+      user = data[key];
+      var marker = L.marker([user.latitude, user.longitude]).addTo(map);
+
+      marker.bindPopup("<strong>" + user.first_name + "</strong><br/>" + user.email + "<br/>" + user.prevention_method);
+
+      marker.on('click', function() {
+        marker.openPopup();
+      });
+
+      markers.push(marker);
+    }
+  });
 }
