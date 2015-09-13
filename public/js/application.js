@@ -13,11 +13,13 @@ $(document).ready(function() {
         map.setView(L.latLng(loc.G, loc.K), 7, {
           animate: true
         });
+
+        getCounty([loc.G, loc.K], function(county) {
+          renderInfo(county);
+        });
       });
     });
   });
-
-
 
   map = L.map('map').setView([39.8282, -98.5795], 4);
 
@@ -32,9 +34,24 @@ $(document).ready(function() {
   loadIncidenceData();
 });
 
-function getCounty(coordinates) {
-  //gju.pointInPolygon({ type: 'Point', coordinates: 
-  
+function renderInfo(county) {
+  incidence = incidenceByCounty[county.FIPS];
+
+  html = "<h1>" + county.name + " County</h1>";
+  html += "Breast cancer incidence: " + incidence + " / 100,000";
+
+  $("#info").html(html);
+}
+
+function getCounty(coordinates, callback) {
+  $.getJSON("http://data.fcc.gov/api/block/find?callback=?", {
+    format: 'jsonp',
+    latitude: coordinates[0],
+    longitude: coordinates[1],
+    showall: 'true'
+  }, function(results) {
+    callback(results.County);
+  });
 }
 
 function geocode(input, callback) {
@@ -42,6 +59,7 @@ function geocode(input, callback) {
 
   if(geocoder) {
     geocoder.geocode({ 'address': input }, function(results, status) {
+      console.log(results);
       if (status == google.maps.GeocoderStatus.OK) {
         console.log(results);
         callback(results[0].geometry.location);
@@ -70,13 +88,13 @@ function loadIncidenceData() {
         .domain(rows.map(function(d) { return d.incidence; }))
         .range(['rgb(255,255,204)','rgb(255,237,160)','rgb(254,217,118)','rgb(254,178,76)','rgb(253,141,60)','rgb(252,78,42)','rgb(227,26,28)','rgb(189,0,38)','rgb(128,0,38)']);
 
-      console.log(colorScale.quantiles());
-
       $.each(incidence, function(i, row) {
         incidenceByCounty[row.fips] = row.incidence;
       });
 
-      loadCountyBoundaries();
+      renderIncidenceDensity($("#chart")[0], incidence, 200);
+
+      //loadCountyBoundaries();
     });
 }
 
@@ -110,7 +128,6 @@ function loadCountyBoundaries() {
     dataType: "json",
     url: "/data/counties.geojson",
     success: function(data) {
-      console.log('here');
       mapData = data;
       $(data.features).each(function(key, data) {
         countyBoundaries = new L.geoJson(data, {
@@ -154,3 +171,103 @@ function meetup(user_input) {
         }
       });
     }
+
+
+function renderIncidenceDensity(container, incidence, callout) {
+  dat = incidence.map(function(row) {
+    return row.incidence;
+  });
+
+  var xMax = d3.max(dat);
+  var xMin = d3.min(dat);
+
+  var margin = { top: 20, right: 20, bottom: 40, left: 60 };
+  var width = 400 - margin.right - margin.left;
+  var height = 200 - margin.top - margin.bottom;
+
+  var x = d3.scale.linear()
+    .domain([0, xMax + 10])
+    .range([0, width]);
+
+  var sd = d3.deviation(dat);
+  var scale = 1.06 * sd * Math.pow(dat.length, -1.0/5.0);
+
+  //var kde = kernelDensityEstimator(epanechnikovKernel(7), x.ticks(100));
+  var kde = kernelDensityEstimator(gaussianKernel(scale), x.ticks(100));
+  var density = kde(dat);
+
+  var ylim = d3.extent(density, function(row) { return row[1]; });
+
+  var svg = d3.select(container).append("svg")
+    .attr("width", width + margin.right + margin.left)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+  var y = d3.scale.linear()
+    .domain([0, ylim[1]])
+    .range([height, 0]); 
+
+  var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+  var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .tickFormat(d3.format("%"));
+
+  var line = d3.svg.line()
+    .x(function(d) { return x(d[0]) })
+    .y(function(d) { return y(d[1]) });
+
+  svg.append("g")
+    .attr("class", "y axis")
+    .call(yAxis);
+
+  svg.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0, " + height + ")")
+    .call(xAxis);
+
+  svg.append('text')
+    .attr('class', 'label')
+    .attr('x', width / 2)
+    .attr('y', height + 30)
+    .attr('text-anchor', 'middle')
+    .text('Breast cancer incidence (cases per 100,000)');
+
+  svg.append('line')
+    .attr('class', 'county-line')
+    .attr('x1', x(callout))
+    .attr('y1', 0)
+    .attr('x2', x(callout))
+    .attr('y2', 100);
+
+
+  svg.append("path")
+    .datum(kde(dat))
+    .attr("class", "line")
+    .attr("d", line);
+}
+
+function kernelDensityEstimator(kernel, x) {
+  return function(sample) {
+    return x.map(function(x) {
+      return [x, d3.mean(sample, function(v) { return kernel(x - v); })];
+    });
+  };
+}
+
+function epanechnikovKernel(scale) {
+  return function(u) {
+    return Math.abs(u /= scale) <= 1 ? .75 * (1 - u * u) / scale : 0;
+  };
+}
+
+function gaussianKernel(scale) {
+  return function(u) {
+    return (1.0 / (Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow(u / scale, 2))
+  }
+}

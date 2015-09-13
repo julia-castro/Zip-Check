@@ -14,9 +14,11 @@ body {
 #prompt-wrapper {
   position: absolute;
   left: 50%;
+  top: 50%;
   width: 400px;
   height: 200px;
-  margin-left: -200px;
+  margin-left: -220px;
+  margin-top: -200px;
 }
 
 #prompt {
@@ -24,9 +26,9 @@ body {
   width: 400px;
   height: 200px;
   margin: auto;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.8);
   z-index: 1;
-  padding: 35px;
+  padding: 40px;
   border-radius: 30px;
   text-align: center;
   box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
@@ -36,3 +38,34 @@ body {
   border: 1px solid gray;
   padding: 5px;
 }
+
+#info {
+  background: rgba(255, 255, 255, 0.8);
+  position: absolute;
+  width: 300px;
+  right: 0px;
+  top: 0px;
+  height: 100%;
+  padding: 25px;
+}
+
+svg path.line {
+    stroke-width: 2;
+    stroke: #537eae;
+    fill: transparent;
+  }
+
+  svg .axis path, #results .axis line {
+    fill: none;
+    stroke: #555;
+    shape-rendering: crispEdges;
+  }
+
+  svg .axis text {
+    font-size: 8pt;
+    font-family: sans-Serif;
+  }
+
+  svg .label {
+    font-size: 7pt;
+  }
