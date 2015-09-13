@@ -75,3 +75,25 @@ svg .axis text {
 svg .label {
   font-size: 7pt;
 }
+
+#controller {
+  position: absolute;
+  left: 0px;
+  bottom: 50px;
+  width: 350px;
+  padding: 50px;
+  background: rgba(255, 255, 255, 0.5);
+  display: none;
+}
+
+#controller button {
+  background: white;
+  color: black;
+  border: 1px solid #ccc;
+  padding: 5px;
+}
+
+#controller button.active {
+  background: blue;
+  color: white;
+}

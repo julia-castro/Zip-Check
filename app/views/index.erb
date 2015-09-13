@@ -3,9 +3,10 @@
   
   <div id='prompt-wrapper'>
     <div id='prompt'>
-      <h2>Are you in a cancer hot spot? Check now</h2>
-      <input id = "get_zip" type="text" placeholder="Enter Your Zip Code" value='02145'>
-      <button id='submit'>Go</button>
+      <h2>Am I in a high breast cancer area?</h2>
+      <p>Breast cancer rates vary over the country. What is the rate in your neighborhood?</p>
+      <input class = "get_zip" type="text" placeholder="Where do you live?" value='02145'>
+      <button class='submit'>Go</button>
     </div>
   </div>
 
@@ -13,6 +14,15 @@
 
   <div id='info'>
     <div id='chart'></div>
+  </div>
+
+  <div id='controller'>
+    <h2>Map Controls</h2>
+    <button class='incidence active'>Incidence</button>
+    <button class='mortality'>Mortality</button>
+
+    <div id='scale'>
+    </div>
   </div>
 
   <h3 id="meetups"></h3>

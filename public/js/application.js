@@ -2,26 +2,40 @@ var countyBoundaries = {};
 var map;
 var incidence;
 var incidenceByCounty = {};
+var mortality;
+var mortalityByCounty = {};
 var colorScale;
+var mortalityColorScale;
 
 $(document).ready(function() {
-  $("#submit").click(function(){
-    var user_input = $("#get_zip").val()
+  $(document).on('click', '.submit', function(){
+    var user_input = $(".get_zip").val()
+
+    $("#controller").show();
 
     geocode(user_input, function(loc) {
-      $("#prompt").fadeOut(function() {
-        map.setView(L.latLng(loc.G, loc.K), 7, {
-          animate: true
+      if($("#prompt").length > 0) {
+        $("#prompt").fadeOut(function() {
+          $(this).remove();
         });
+      }
+      map.setView(L.latLng(loc.G, loc.K), 7, {
+        animate: true
+      });
 
-        getCounty([loc.G, loc.K], function(county) {
-          renderInfo(county);
+      getCounty([loc.G, loc.K], function(county) {
+        renderInfo(county);
 
-          countyBoundaries[county.FIPS].setStyle({
-            stroke: true,
-            color: 'blue',
-            weight: 3
+        for(key in countyBoundaries) {
+          countyBoundaries[key].setStyle({
+            stroke: false
           });
+        }
+
+        countyBoundaries[county.FIPS].setStyle({
+          stroke: true,
+          color: 'blue',
+          weight: 3
         });
       });
     });
@@ -36,20 +50,140 @@ $(document).ready(function() {
       accessToken: 'pk.eyJ1IjoiaGVyYnBzMTAiLCJhIjoiV1dHRDZmWSJ9.hEa8olJ_k35VTNfVNmDD4A'
   }).addTo(map);
 
+  $(".incidence").click(function() {
+    $(this).addClass('active');
+    $(".mortality").removeClass('active');
+    for(key in countyBoundaries) {
+      countyBoundaries[key].setStyle(incidenceStyle);
+    }
+
+    drawScale('incidence');
+  });
+
+  $(".mortality").click(function() {
+    $(this).addClass('active');
+    $(".incidence").removeClass('active');
+    for(key in countyBoundaries) {
+      countyBoundaries[key].setStyle(mortalityStyle);
+    }
+
+    drawScale('mortality');
+  });
+
 
   loadIncidenceData();
+  loadMortalityData();
 });
 
-function renderInfo(county) {
-  val = incidenceByCounty[county.FIPS];
+function drawScale(type) {
+  $("#scale").empty();
+  var svg = d3.select($("#scale")[0])
+    .append('svg')
+    .attr('width', 400)
+    .attr('height', 100)
+    .append('g')
+    .attr('transform', 'translate(10, 10)');
 
-  html = "<h1>" + county.name + " County</h1>";
-  html += "Breast cancer incidence: " + val + " / 100,000";
-  html += "<div id='chart'></div>";
+  var quantiles;
+  
+  if(type == 'mortality') {
+    quantiles = mortalityColorScale.quantiles();
+  }
+  else {
+    quantiles = colorScale.quantiles();
+  }
+
+  svg.selectAll('.box')
+    .data(quantiles)
+    .enter()
+    .append('rect')
+    .attr('class', 'box')
+    .attr('x', function(d, i) { return i * 35 })
+    .attr('y', 0)
+    .attr('width', 30)
+    .attr('height', 30)
+    .style('fill', function(d) {
+      if(type == 'mortality') {
+        return mortalityColorScale(d)
+      }
+      else {
+        return colorScale(d);
+      }
+    });
+  
+
+  svg.selectAll('.label')
+    .data(quantiles)
+    .enter()
+    .append('text')
+    .attr('class', 'label')
+    .attr('x', function(d, i) { return i * 35 })
+    .attr('y', 40)
+    .text(function(d) { return Math.round(d) });
+
+  svg.selectAll('.title')
+    .data([1])
+    .enter()
+    .append('text')
+    .attr('class', 'title')
+    .attr('x', 0)
+    .attr('y', 60)
+    .text(function() {
+      if(type == 'mortality') {
+        return 'Age adjusted death rate (deaths per 100,000)';
+      }
+      else {
+        return 'Age adjusted incidence rate (cases per 100,000)';
+      }
+    });
+}
+
+function renderInfo(county) {
+  incidenceVal = incidenceByCounty[county.FIPS];
+  mortalityVal = mortalityByCounty[county.FIPS];
+
+  html = "<input type='text' class='get_zip' />";
+  html += "<button class='submit'>Go</button>";
+  html += "<h1>" + county.name + " County</h1>";
+
+
+  html += "<h3>Incidence</h3>";
+
+  if(!isNaN(incidenceVal) && incidenceVal != undefined) {
+    html += "Breast cancer incidence: " + incidenceVal + " / 100,000";
+    html += "<div id='incidence-chart'></div>";
+  }
+  else {
+    html += "<div>No data. Not all states have cancer registries. Data is suppressed in some counties that have low incidence to protect the privacy of those in the registry.</div>"
+  }
+
+
+  html += "<h3>Mortality</h3>";
+  if(!isNaN(mortalityVal) && mortalityVal != undefined) {
+    html += "Breast cancer mortality: " + mortalityVal + " / 100,000";
+    html += "<div id='mortality-chart'></div>";
+  }
+  else {
+    html += "<div>No data. Not all states have cancer registries. Data is suppressed in some counties that have low mortality to protect the privacy of those in the registry.</div>"
+  }
 
   $("#info").html(html);
+
+  var incidenceDat = incidence.map(function(d) {
+    return d.incidence;
+  });
+
+  var mortalityDat = mortality.map(function(d) {
+    return d.mortality;
+  });
   
-  renderIncidenceDensity($("#chart")[0], incidence, county.name, val);
+  if(!isNaN(incidenceVal) && incidenceVal != undefined) {
+    renderDensity($("#incidence-chart")[0], incidenceDat, county.name, incidenceVal, "Age-adjusted Breast cancer incidence (cases per 100,000)" );
+  }
+
+  if(!isNaN(mortalityVal) && mortalityVal != undefined) {
+    renderDensity($("#mortality-chart")[0], mortalityDat, county.name, mortalityVal, "Age-adjusted annual death rate (deaths per 100,000)");
+  }
 }
 
 function getCounty(coordinates, callback) {
@@ -100,20 +234,38 @@ function loadIncidenceData() {
       });
 
 
+      drawScale('incidence');
       loadCountyBoundaries();
+    });
+
+}
+
+function loadMortalityData() {
+  d3.csv("data/map_data_mortality.csv")
+    .row(function(d) {
+      return { 
+          county: d['County'].replace(/ \([0-9]\)/, ""),
+          state: d['State'],
+          fips: d['FIPS'],
+          mortality: +d['Annual Death Rate']
+        }
+    }).get(function(error, rows) {
+      mortality = rows;
+
+      mortalityColorScale = d3.scale.quantile()
+        .domain(rows.map(function(d) { return d.mortality; }))
+        .range(['rgb(255,255,204)','rgb(255,237,160)','rgb(254,217,118)','rgb(254,178,76)','rgb(253,141,60)','rgb(252,78,42)','rgb(227,26,28)','rgb(189,0,38)','rgb(128,0,38)']);
+
+      $.each(mortality, function(i, row) {
+        mortalityByCounty[row.fips] = row.mortality;
+      });
     });
 }
 
-function style(feature) {
+function incidenceStyle(feature) {
   key = "" + feature.properties.STATE + feature.properties.COUNTY;
 
   val = incidenceByCounty[key];
-  //if(incidence == undefined) {
-    //console.log(feature.properties.NAME + " " + feature.properties.STATE);
-  //}
-  //
-  //
-
   if(isNaN(val) || val == undefined) {
     return {
       stroke: false,
@@ -129,6 +281,25 @@ function style(feature) {
   }
 }
 
+function mortalityStyle(feature) {
+  key = "" + feature.properties.STATE + feature.properties.COUNTY;
+
+  val = mortalityByCounty[key];
+  if(isNaN(val) || val == undefined) {
+    return {
+      stroke: false,
+      fillColor: 'gray'
+    };
+  }
+  else {
+    return {
+      stroke: false,
+      fillColor: mortalityColorScale(val),
+      fillOpacity: 0.5
+    };
+  }
+}
+
 function loadCountyBoundaries() {
   $.ajax({
     dataType: "json",
@@ -139,7 +310,7 @@ function loadCountyBoundaries() {
         fips = data.properties.STATE + data.properties.COUNTY;
 
         countyBoundaries[fips] = new L.geoJson(data, {
-          style: style 
+          style: incidenceStyle
         });
 
         countyBoundaries[fips].on('mouseover', function() {
@@ -185,11 +356,7 @@ function meetup(user_input) {
 }
 
 
-function renderIncidenceDensity(container, incidence, county, callout) {
-  dat = incidence.map(function(row) {
-    return row.incidence;
-  });
-
+function renderDensity(container, dat, county, callout) {
   var xMax = d3.max(dat);
   var xMin = d3.min(dat);
 
